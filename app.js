@@ -1,5 +1,5 @@
 const DATA_URL = "./data/readings.json";
-const WORKER_BASE_URL = "REPLACE_WITH_WORKER_URL";
+const WORKER_BASE_URL = "https://seishotsudoku-push.teruntyo.workers.dev";
 const VAPID_PUBLIC_KEY = "BP51V69QOr3LWj2YhzcVO05ojPb9R_VRiMcNciBxPkOXbBtsYZMuJOxgrpVcr755ixYsWK5hVDJLXSgYpTWfM_I";
 
 function jstTodayKey() {
