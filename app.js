@@ -169,6 +169,38 @@ async function enablePush() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  let deferredInstallPrompt = null;
+const elInstallBtn = document.getElementById("btnInstall");
+
+// Chrome(Android)が「インストール可能」と判断すると発火
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault(); // ブラウザ任せのミニバーを止めて、自前ボタンで出す
+  deferredInstallPrompt = e;
+  if (elInstallBtn) elInstallBtn.style.display = "";
+});
+
+// インストール完了後はボタンを消す
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  if (elInstallBtn) elInstallBtn.style.display = "none";
+});
+
+// ボタンクリックでインストールを促す
+async function handleInstallClick() {
+  if (!deferredInstallPrompt) return;
+
+  deferredInstallPrompt.prompt();
+  const choice = await deferredInstallPrompt.userChoice.catch(() => null);
+
+  // choice?.outcome === "accepted" / "dismissed"
+  deferredInstallPrompt = null;
+  if (elInstallBtn) elInstallBtn.style.display = "none";
+}
+
+if (elInstallBtn) {
+  elInstallBtn.addEventListener("click", handleInstallClick);
+}
+
   // 画面表示
   await loadToday();
 
