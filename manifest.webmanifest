@@ -1,7 +1,8 @@
 {
   "name": "聖書通読",
   "short_name": "聖書通読",
-  "start_url": "./",
+  "start_url": "/seishotsudoku/",
+  "scope": "/seishotsudoku/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff"
