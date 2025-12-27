@@ -3,7 +3,7 @@
 const WORKER_ORIGIN = "https://seishotsudoku-push.teruntyo.workers.dev";
 
 // VAPID 公開鍵（Public Keyだけ）
-const VAPID_PUBLIC_KEY = "（あなたの公開鍵）";
+const VAPID_PUBLIC_KEY = "BP51V69QOr3LWj2YhzcVO05ojPb9R_VRiMcNciBxPkOXbBtsYZMuJOxgrpVcr755ixYsWK5hVDJLXSgYpTWfM_I";
 
 const els = {
   install: document.getElementById("btnInstall"),
