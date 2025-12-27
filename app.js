@@ -7,7 +7,8 @@ const WORKER_ORIGIN = "https://seishotsudoku-push.teruntyo.workers.dev";
 
 // ★「公開しているCSV」のURL（pub?output=csv のほう）
 const CSV_URL =
-  "https://docs.google.com/spreadsheets/d/e/1Ue8iKwyo8EMvoI-eCXiWpQ7_nMyRtbNg80SvIv3Y5_Q/pub?gid=1717884447&single=true&output=csv";
+  "https://docs.google.com/spreadsheets/d/1Ue8iKwyo8EMvoI-eCXiWpQ7_nMyRtbNg80SvIv3Y5_Q/gviz/tq?tqx=out:csv&gid=1717884447
+";
 
 // ★ VAPID 公開鍵（改行なしで1行に！）
 const VAPID_PUBLIC_KEY =
