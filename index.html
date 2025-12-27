@@ -9,6 +9,9 @@
 <body>
   <main style="font-family:system-ui;max-width:720px;margin:24px auto;padding:0 16px;">
     <h1>聖書通読</h1>
+    <button id="btnEnablePush">🔔 通知を受け取る</button>
+    <div id="pushStatus" style="margin-top:8px;"></div>
+
     <p id="today"></p>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;">
@@ -22,5 +25,72 @@
   </main>
 
   <script src="./app.js"></script>
+  <script>
+  // ★あなたのWorker
+  const WORKER_ORIGIN = "https://seishotsudoku-push.teruntyo.workers.dev";
+
+  // ★ここに「VAPID 公開鍵（Public Key）」を貼る（Private Keyは絶対貼らない）
+  const VAPID_PUBLIC_KEY = "ここにあなたのPublic Keyを貼る";
+
+  const statusEl = document.getElementById("pushStatus");
+
+  function setStatus(msg){ statusEl.textContent = msg; }
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = "=".repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+  }
+
+  async function enablePush(){
+    setStatus("準備中…");
+
+    // iPhone Safari は「ホーム画面に追加」が必要（iOS 16.4+）
+    if (!("serviceWorker" in navigator)) {
+      setStatus("このブラウザはService Worker非対応です");
+      return;
+    }
+    if (!("PushManager" in window)) {
+      setStatus("この端末/ブラウザはPush通知に対応していません（iPhoneはホーム画面追加が必要）");
+      return;
+    }
+
+    // 1) SW登録（GitHub Pages配下なので ./sw.js が正解）
+    const reg = await navigator.serviceWorker.register("./sw.js");
+
+    // 2) 許可要求（ボタン押下の中でやるのが重要）
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") {
+      setStatus("通知が許可されませんでした。ブラウザ設定で通知を許可してください。");
+      return;
+    }
+
+    // 3) 購読作成
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+
+    // 4) Workerへ保存
+    const res = await fetch(WORKER_ORIGIN + "/subscribe", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(sub),
+    });
+
+    const text = await res.text();
+    if (!res.ok) {
+      setStatus("subscribe失敗: " + res.status + " " + text);
+      return;
+    }
+    setStatus("✅ 通知購読OK（KVに保存されました）");
+  }
+
+  document.getElementById("btnEnablePush").addEventListener("click", enablePush);
+</script>
+
 </body>
 </html>
