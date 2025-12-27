@@ -93,11 +93,19 @@ async function loadToday() {
 
 async function refreshPushButtonState() {
   // SW対応確認
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    elPushBtn.style.display = "none";
-    setPushStatus("この端末/ブラウザはPush通知に対応していません。");
-    return;
-  }
+if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+  elPushBtn.style.display = "none";
+
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+  setPushStatus(
+    isIOS
+      ? "Push通知を有効にするには、このページを「ホーム画面に追加」して、追加したアイコンから開いてください。"
+      : "Push通知を有効にできない状態です。ブラウザの通知設定を確認してください（可能ならホーム画面に追加してお試しください）。"
+  );
+  return;
+}
 
   // 既に許可されてなければボタンは出す
   if (Notification.permission !== "granted") {
