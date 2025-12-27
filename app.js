@@ -1,93 +1,53 @@
-const DATA_URL = "./data/readings.json";
-const WORKER_BASE_URL = "https://seishotsudoku-push.teruntyo.workers.dev";
-const VAPID_PUBLIC_KEY = "BP51V69QOr3LWj2YhzcVO05ojPb9R_VRiMcNciBxPkOXbBtsYZMuJOxgrpVcr755ixYsWK5hVDJLXSgYpTWfM_I";
+// sw.js
+self.addEventListener("install", () => self.skipWaiting());
 
-function jstTodayKey() {
-  const now = new Date();
-  const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-  const y = jst.getFullYear();
-  const m = String(jst.getMonth() + 1).padStart(2, "0");
-  const d = String(jst.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
 
-async function loadToday() {
-  const res = await fetch(DATA_URL, { cache: "no-store" });
-  const json = await res.json();
-  const today = jstTodayKey();
+self.addEventListener("push", (event) => {
+  event.waitUntil((async () => {
+    let data = {};
+    try {
+      // iOS/一部Androidで event.data.json() が不安定なので text() → JSON.parse
+      const txt = event.data ? await event.data.text() : "{}";
+      data = txt ? JSON.parse(txt) : {};
+    } catch (e) {
+      data = {};
+    }
 
-  document.getElementById("today").textContent = `今日：${today}`;
+    const title = data.title || "聖書通読";
+    const body  = data.body  || "";
 
-  const item = (json.items || []).find(x => x.date === today);
-  const el = document.getElementById("content");
+    // URLは必ず絶対URLへ（これがスマホで効く）
+    const rawUrl = data.url || "/seishotsudoku/";
+    const absUrl = new URL(rawUrl, self.location.origin).href;
 
-  if (!item) {
-    el.innerHTML = `<p>本日のデータがありません（data/readings.json を更新してください）。</p>`;
-    return;
-  }
+    await self.registration.showNotification(title, {
+      body,
+      data: { url: absUrl },
+      // icon: "/seishotsudoku/icon-192.png", // あれば推奨
+    });
+  })());
+});
 
-  const urls = (item.urls || [])
-    .map(u => `<li><a href="${u}" target="_blank" rel="noopener">${u}</a></li>`)
-    .join("");
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
 
-  el.innerHTML = `
-    <h2>${escapeHtml(item.passage || "")}</h2>
-    <p>曜日：${escapeHtml(item.weekday || "")}</p>
-    ${urls ? `<ul>${urls}</ul>` : ""}
-    ${item.comment ? `<p><b>コメント：</b>${escapeHtml(item.comment)}</p>` : ""}
-  `;
-}
+  event.waitUntil((async () => {
+    const raw = event.notification?.data?.url || "/seishotsudoku/";
+    const url = new URL(raw, self.location.origin).href;
 
-function escapeHtml(s){
-  return String(s)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
-    .replace(/'/g,"&#39;");
-}
+    // 既に開いてる画面があればフォーカスして遷移（スマホで安定）
+    const allClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const c of allClients) {
+      if (c.url && c.url.startsWith(new URL("/seishotsudoku/", self.location.origin).href)) {
+        await c.focus();
+        if ("navigate" in c) await c.navigate(url);
+        return;
+      }
+    }
 
-function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
-  return outputArray;
-}
-
-async function enablePush() {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    alert("この端末はPush通知に対応していません（iPhoneはホーム画面追加が必要）");
-    return;
-  }
-  if (WORKER_BASE_URL.includes("REPLACE") || VAPID_PUBLIC_KEY.includes("REPLACE")) {
-    alert("WORKER_BASE_URL / VAPID_PUBLIC_KEY を設定してください（次の手順で入れます）");
-    return;
-  }
-
-  const perm = await Notification.requestPermission();
-  if (perm !== "granted") {
-    alert("通知が許可されていません");
-    return;
-  }
-
-  const reg = await navigator.serviceWorker.register("./sw.js");
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-  });
-
-  const r = await fetch(`${WORKER_BASE_URL}/subscribe`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(sub),
-  });
-
-  const j = await r.json().catch(() => null);
-  if (j?.ok) alert("通知を有効にしました");
-  else alert("購読の保存に失敗しました");
-}
-
-document.getElementById("btnPush").addEventListener("click", enablePush);
-document.getElementById("btnTest").addEventListener("click", loadToday);
-
-loadToday();
+    await self.clients.openWindow(url);
+  })());
+});
