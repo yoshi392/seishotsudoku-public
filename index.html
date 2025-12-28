@@ -4,98 +4,90 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>聖書通読</title>
-
   <link rel="manifest" href="./manifest.webmanifest" />
   <meta name="theme-color" content="#ffffff" />
-
-  <!-- iOS -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="聖書通読" />
-
-  <!-- icons -->
-  <link rel="icon" href="./icons/icon-192.png" />
-  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-
   <style>
-    body { font-family: system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif; margin:0; background:#fff; color:#111; }
-    main { max-width: 900px; margin: 24px auto; padding: 0 18px 80px; }
-    h1 { font-size: 44px; margin: 12px 0 18px; font-weight: 900; letter-spacing: .02em; }
-    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-    .btn { border:0; border-radius: 999px; padding: 12px 18px; font-weight: 800; cursor:pointer; }
-    .btn-soft { background:#eee; }
-    .btn-install { background:#e8f3ff; }
-    .status { margin: 10px 0 18px; font-size: 16px; color:#333; display:flex; align-items:center; gap:8px; }
-    .ok { color:#0a7a3a; font-weight: 800; }
-    .err { color:#b00020; font-weight: 800; }
-
-    .today-date { font-size: 26px; font-weight: 900; margin: 18px 0 6px; }
-    .today-verse { font-size: 38px; font-weight: 900; margin: 0 0 12px; }
-
-    .pill { display:inline-block; padding: 10px 14px; border-radius: 14px; font-weight: 900; text-decoration:none; }
-    .pill-prs { background:#eaf1ff; color:#1a56db; }
-    .pill-lb { background:#fff1e6; color:#a85b00; }
-
-    .comment { margin: 18px 0 0; font-size: 18px; line-height: 1.8; }
-    hr { border:none; border-top:1px solid #eee; margin: 22px 0; }
-
-    .section-title { font-size: 26px; font-weight: 900; margin: 18px 0 10px; }
-    .chips { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin: 8px 0 14px; }
-    .chip { border:1px solid #ddd; background:#fff; padding: 10px 14px; border-radius: 999px; font-weight: 800; cursor:pointer; }
-    .chip.active { background:#f3f3f3; }
-
-    .list { display:flex; flex-direction:column; gap:12px; }
-    .item { display:flex; gap:12px; align-items:center; padding: 14px; border-radius: 16px; background:#fafafa; }
-    .item button, .item a { cursor:pointer; }
-    .item-main { flex:1; min-width: 0; }
-    .item-date { font-weight: 900; }
-    .item-verse { color:#333; margin-top: 4px; font-weight: 800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .chk { width:22px; height:22px; border-radius: 6px; border:2px solid #cfcfcf; background:#fff; flex:0 0 auto; }
-    .chk.done { background:#111; border-color:#111; }
-    .heart { width:64px; height:44px; border-radius: 999px; border:0; background:#ededed; font-size: 20px; }
-    .heart.on { background:#ffe9ef; }
-    .today-actions { display:flex; align-items:center; gap:10px; margin: 6px 0 14px; }
+    body{font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;margin:0;background:#fff;color:#111}
+    main{max-width:760px;margin:24px auto;padding:0 16px}
+    h1{font-size:40px;margin:0 0 18px}
+    .rowTop{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 14px}
+    .pill{border:0;border-radius:999px;padding:12px 16px;font-weight:800;background:#f1f1f1}
+    .pill.primary{background:#f1f1f1}
+    .pill.install{background:#eaf3ff}
+    #pushStatus{margin-left:4px;color:#167a3a;font-weight:700}
+    #todayDate{font-size:22px;font-weight:900;margin:16px 0 4px}
+    #todayVerse{font-size:34px;font-weight:900;margin:0 0 10px}
+    .btnRow{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+    .btn{display:inline-block;text-decoration:none;font-weight:900;padding:14px 16px;border-radius:14px;background:#eaf0ff;color:#1649ff}
+    .btnLb{background:#ffe9c8;color:#b05a00}
+    #todayComment{font-size:18px;line-height:1.7;margin:14px 0 6px}
+    hr{border:0;border-top:1px solid #eee;margin:18px 0}
+    .sectionTitle{font-size:26px;font-weight:900;margin:18px 0 8px}
+    .filters{display:flex;gap:10px;align-items:center;margin:10px 0 14px;flex-wrap:wrap}
+    .chip{border:1px solid #ddd;border-radius:999px;padding:10px 14px;background:#fff;font-weight:800}
+    .chip.active{background:#f2f2f2}
+    .counts{color:#666;font-weight:800}
+    ul{list-style:none;padding:0;margin:0}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid #f0f0f0}
+    .rowMain{border:0;background:transparent;text-align:left;padding:0;flex:1}
+    .rowDate{font-weight:900}
+    .rowVerse{color:#333;margin-top:4px;font-weight:800}
+    .heart{border:0;border-radius:999px;padding:10px 14px;background:#f2f2f2;font-size:18px}
+    /* iOS A2HS modal */
+    #a2hsModal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:18px}
+    #a2hsModal .box{background:#fff;border-radius:18px;max-width:520px;width:100%;padding:16px 16px 10px}
+    #a2hsModal h3{margin:0 0 8px}
+    #a2hsModal ol{margin:8px 0 12px;padding-left:20px;line-height:1.7}
+    #a2hsModal .closeRow{display:flex;justify-content:flex-end}
+    #a2hsModal button{border:0;border-radius:12px;padding:10px 14px;font-weight:900;background:#f2f2f2}
   </style>
 </head>
-
 <body>
   <main>
     <h1>聖書通読</h1>
 
-    <div class="row">
-      <!-- ✅ 通知ボタンはここ1つだけ -->
-      <button id="btnPush" class="btn btn-soft">🔔 通知を有効にする</button>
-
-      <!-- Android用：インストール（出る時だけ表示） -->
-      <button id="btnInstall" class="btn btn-install" style="display:none;">📲 アプリをインストール</button>
+    <div class="rowTop">
+      <button id="btnPush" class="pill primary" type="button">🔔 通知を有効にする</button>
+      <button id="btnInstall" class="pill install" type="button" hidden>⬇️ アプリをインストール</button>
+      <span id="pushStatus"></span>
     </div>
 
-    <div id="pushStatus" class="status"></div>
+    <button id="btnLike" class="pill" type="button" aria-pressed="false">♡</button>
 
-    <!-- 今日 -->
-    <div class="today-date" id="todayDate"></div>
-    <div class="today-verse" id="todayVerse"></div>
+    <div id="todayDate"></div>
+    <div id="todayVerse"></div>
 
-    <!-- 今日の操作：✅ ここにハート（今日の箇所に無かった問題を解消） -->
-    <div class="today-actions">
-      <button id="btnTodayLike" class="heart" title="いいね">♡</button>
-      <span id="todayLikeLabel" style="font-weight:900;color:#666;"></span>
-    </div>
+    <div id="todayButtons"></div>
 
-    <div class="row" id="todayButtons"></div>
-    <div class="comment" id="todayComment"></div>
+    <p id="todayComment"></p>
 
     <hr />
 
-    <div class="section-title">過去の聖書箇所</div>
-    <div class="chips">
-      <button id="chipUnread" class="chip active">未読のみ</button>
-      <button id="chipAll" class="chip">すべて</button>
-      <span id="countLabel" style="margin-left:10px;color:#666;font-weight:900;"></span>
+    <div class="sectionTitle">過去の聖書箇所</div>
+
+    <div class="filters">
+      <button id="btnFilterUnread" class="chip active" type="button">未読のみ</button>
+      <button id="btnFilterAll" class="chip" type="button">すべて</button>
+      <span class="counts">既読 <span id="countRead">0</span> / 未読 <span id="countUnread">0</span></span>
     </div>
 
-    <div class="list" id="historyList"></div>
+    <ul id="list"></ul>
   </main>
+
+  <!-- iOS: ホーム画面に追加 안내 -->
+  <div id="a2hsModal" hidden>
+    <div class="box">
+      <h3>ホーム画面に追加</h3>
+      <ol>
+        <li>Safariの共有（□に↑）をタップ</li>
+        <li>「ホーム画面に追加」を選択</li>
+        <li>追加後はホーム画面から開いてください</li>
+      </ol>
+      <div class="closeRow">
+        <button id="btnA2hsClose" type="button">閉じる</button>
+      </div>
+    </div>
+  </div>
 
   <script src="./app.js"></script>
 </body>
