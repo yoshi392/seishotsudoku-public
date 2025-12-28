@@ -9,99 +9,114 @@
   <meta name="theme-color" content="#ffffff" />
 
   <style>
-    body{font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;margin:0;background:#fff;color:#111}
-    main{max-width:900px;margin:24px auto;padding:0 16px}
-    h1{font-size:44px;margin:8px 0 18px}
-    .topRow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:6px 0 18px}
-    .state{font-weight:700;color:#1b5e20}
-    .btn{border:0;border-radius:18px;padding:10px 14px;font-weight:800;background:#f2f2f2;cursor:pointer}
-    .btn:disabled{opacity:.55;cursor:not-allowed}
-    .btnPush{background:#efefef}
-    .btnInstall{background:#e7f0ff}
-    .btnAddHome{background:#fff4e6}
-    .card{padding:18px;border-top:1px solid #eee}
-    .date{font-size:22px;font-weight:800;margin:4px 0 10px}
-    .titleRow{display:flex;align-items:center;gap:12px}
-    h2{font-size:46px;margin:0}
-    .heart{width:46px;height:46px;border-radius:18px;border:0;background:#f2f2f2;font-size:22px;cursor:pointer}
-    .heart.liked{background:#ffe6e6}
-    .btnRow{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
-    a.btn{display:inline-block;text-decoration:none}
-    .blue{background:#e7f0ff;color:#174ea6}
-    .orange{background:#ffe8c7;color:#8a4b00}
-    .comment{font-size:22px;line-height:1.7;margin:12px 0 0}
-    hr{border:0;border-top:1px solid #eee;margin:18px 0}
-    h3{font-size:34px;margin:6px 0 12px}
-    .filterRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 14px}
-    .pill{border:1px solid #ddd;border-radius:18px;padding:9px 14px;font-weight:800;background:#fff;cursor:pointer}
-    .pill.active{background:#f2f2f2}
-    .count{color:#666;font-weight:700;margin-left:10px}
-    .dayRow{display:grid;grid-template-columns:54px 1fr 54px;gap:8px;align-items:center;padding:10px 0;border-top:1px solid #f0f0f0}
-    .check{width:46px;height:46px;border-radius:14px;border:0;background:#f2f2f2;font-size:20px;cursor:pointer}
-    .mid .d{font-weight:900;font-size:20px}
-    .mid .v{font-weight:900;font-size:22px;margin-top:2px}
-    .heartSmall{width:46px;height:46px;border-radius:14px;border:0;background:#f2f2f2;font-size:20px;cursor:pointer}
-    .heartSmall.liked{background:#ffe6e6}
+    :root { --w: 920px; }
+    body{ font-family: system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif; margin:0; color:#111; background:#fff; }
+    main{ max-width:var(--w); margin:24px auto; padding:0 16px 40px; }
+    h1{ font-size:44px; margin:8px 0 14px; letter-spacing:.02em; }
+    .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    .btn{ border:0; border-radius:999px; padding:12px 16px; font-weight:800; cursor:pointer; background:#efefef; }
+    .btn.primary{ background:#e8f0ff; color:#1a56db; }
+    .btn.install{ background:#e8fff1; color:#167a3a; display:none; }
+    .status{ font-weight:700; opacity:.85; display:flex; align-items:center; gap:8px; }
+    .card{ margin-top:16px; padding:18px; border-radius:18px; background:#fff; }
+    .date{ font-size:34px; font-weight:900; margin:10px 0 6px; }
+    .verse{ font-size:52px; font-weight:900; margin:0 0 12px; line-height:1.05; }
+    .comment{ font-size:22px; line-height:1.8; margin-top:12px; }
+    .btnRow{ display:flex; gap:12px; flex-wrap:wrap; margin:14px 0 6px; }
+    .pill{ border-radius:14px; padding:14px 18px; font-weight:900; border:0; cursor:pointer; }
+    .pill.prs{ background:#e8f0ff; color:#1a56db; }
+    .pill.lb{ background:#f7ead2; color:#a05a00; }
+    .muted{ opacity:.7; }
 
-    /* modal */
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:18px;z-index:9999}
-    .modalBox{background:#fff;border-radius:20px;max-width:560px;width:100%;padding:18px 18px 14px}
-    .modalBox h4{margin:0 0 10px;font-size:22px}
-    .modalBox ol{margin:0 0 10px;padding-left:20px;line-height:1.7;font-size:18px}
-    .closeRow{display:flex;justify-content:flex-end}
+    .todayActions{ display:flex; align-items:center; gap:12px; margin:10px 0 0; }
+    .likeBtn{
+      width:54px; height:54px; border-radius:18px;
+      border:0; background:#efefef; cursor:pointer;
+      display:grid; place-items:center; font-size:22px;
+    }
+    .likeBtn.on{ background:#ffe6ea; }
+    .divider{ height:1px; background:#eee; margin:18px 0; }
+
+    h2{ font-size:30px; margin:18px 0 8px; }
+    .filters{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:6px 0 10px; }
+    .chip{ border:1px solid #ddd; background:#fff; border-radius:999px; padding:10px 14px; font-weight:800; cursor:pointer; }
+    .chip.on{ background:#efefef; }
+    .counts{ font-weight:800; opacity:.7; }
+
+    .list{ display:flex; flex-direction:column; gap:12px; margin-top:10px; }
+    .item{
+      display:grid;
+      grid-template-columns: 40px 1fr 60px;
+      gap:10px;
+      align-items:center;
+      padding:12px 12px;
+      border-radius:18px;
+      background:#f4f4f4;
+    }
+    .mark{
+      width:22px; height:22px; border-radius:6px;
+      border:2px solid #cfcfcf;
+      background:transparent;
+      cursor:pointer;
+    }
+    .mark.on{ background:#cfe3ff; border-color:#7aa7ff; }
+    .link{
+      text-decoration:none; color:#111;
+      font-weight:900;
+    }
+    .sub{ display:block; font-size:14px; font-weight:800; opacity:.7; margin-top:2px; }
+    .likeMini{
+      width:52px; height:52px; border-radius:18px; border:0;
+      background:#eaeaea; cursor:pointer; font-size:22px;
+      display:grid; place-items:center;
+    }
+    .likeMini.on{ background:#ffe6ea; }
   </style>
+
+  <script>
+    // ★ここはあなたの値のままでOK（既に入っているなら置換しない）
+    window.__CONFIG__ = {
+      WORKER_ORIGIN: "https://seishotsudoku-push.teruntyo.workers.dev",
+      VAPID_PUBLIC_KEY: "（あなたのVAPID公開鍵）",
+      APP_URL: "https://yoshi392.github.io/seishotsudoku/"
+    };
+  </script>
 </head>
 
 <body>
-<main>
-  <h1>聖書通読</h1>
+  <main>
+    <h1>聖書通読</h1>
 
-  <div class="topRow">
-    <button id="btnEnablePush" class="btn btnPush">🔔 通知を有効にする</button>
-    <span id="pushState" class="state"></span>
-
-    <!-- Android用（条件が揃うと出る） -->
-    <button id="btnInstall" class="btn btnInstall" hidden>⬇️ アプリをインストール</button>
-
-    <!-- iOS用（自動で邪魔しない） -->
-    <button id="btnAddHome" class="btn btnAddHome" hidden>➕ ホーム画面に追加</button>
-  </div>
-
-  <section class="card">
-    <div id="todayDate" class="date"></div>
-    <div class="titleRow">
-      <h2 id="todayTitle"></h2>
-      <button id="btnLikeToday" class="heart" aria-label="いいね">♡</button>
+    <div class="row">
+      <button id="btnEnablePush" class="btn primary">🔔 通知を有効にする</button>
+      <button id="btnInstall" class="btn install">⬇️ アプリをインストール</button>
+      <div id="pushState" class="status"></div>
     </div>
 
-    <div id="todayVerse"></div>
-    <div id="todayButtons"></div>
-    <p id="todayComment" class="comment"></p>
-  </section>
+    <div class="card">
+      <div class="todayActions">
+        <button id="btnLikeToday" class="likeBtn" aria-label="いいね">♡</button>
+      </div>
 
-  <hr/>
+      <div id="todayDate" class="date"></div>
+      <div id="todayVerse" class="verse"></div>
 
-  <section>
-    <h3>過去の聖書箇所</h3>
-    <div class="filterRow">
-      <button id="btnFilterUnread" class="pill active">未読のみ</button>
-      <button id="btnFilterAll" class="pill">すべて</button>
-      <span id="countInfo" class="count"></span>
+      <div id="todayButtons" class="btnRow"></div>
+      <div id="todayComment" class="comment"></div>
+
+      <div class="divider"></div>
+
+      <h2>過去の聖書箇所</h2>
+      <div class="filters">
+        <button id="btnFilterUnread" class="chip on">未読のみ</button>
+        <button id="btnFilterAll" class="chip">すべて</button>
+        <span id="counts" class="counts">既読 0 / 未読 0</span>
+      </div>
+
+      <div id="daysList" class="list"></div>
     </div>
-    <div id="daysList"></div>
-  </section>
-</main>
+  </main>
 
-
-
-<script>
-  // ★ここだけ自分の値に合わせる
-  window.__CONFIG__ = {
-    WORKER_ORIGIN: "https://seishotsudoku-push.teruntyo.workers.dev",
-    APP_URL: "https://yoshi392.github.io/seishotsudoku/",
-    VAPID_PUBLIC_KEY: "（あなたのVAPID公開鍵をここへ）"
-  };
-</script>
-<script src="./app.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
