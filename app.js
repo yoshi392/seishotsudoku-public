@@ -1,21 +1,16 @@
-// app.js (front-end)
+// app.js (front-end) — 完成版（A2HSポップアップ完全削除）
 
 const CONFIG = window.__CONFIG__ || {};
 const WORKER_ORIGIN = (CONFIG.WORKER_ORIGIN || "").replace(/\/$/, "");
 const VAPID_PUBLIC_KEY = (CONFIG.VAPID_PUBLIC_KEY || "").trim();
-const APP_URL = CONFIG.APP_URL || (location.origin + location.pathname.replace(/\/[^/]*$/, "/"));
+const APP_URL = (CONFIG.APP_URL || (location.origin + location.pathname.replace(/\/[^/]*$/, "/")));
 
 // ---- DOM
 const elPushState = document.getElementById("pushState");
 const btnEnablePush = document.getElementById("btnEnablePush");
-
 const btnInstall = document.getElementById("btnInstall");
-const btnAddHome = document.getElementById("btnAddHome");
-const modalAddHome = document.getElementById("modalAddHome");
-const btnCloseAddHome = document.getElementById("btnCloseAddHome");
 
 const elTodayDate = document.getElementById("todayDate");
-const elTodayTitle = document.getElementById("todayTitle");
 const elTodayVerse = document.getElementById("todayVerse");
 const elTodayButtons = document.getElementById("todayButtons");
 const elTodayComment = document.getElementById("todayComment");
@@ -23,69 +18,95 @@ const btnLikeToday = document.getElementById("btnLikeToday");
 
 const btnFilterUnread = document.getElementById("btnFilterUnread");
 const btnFilterAll = document.getElementById("btnFilterAll");
-const elCountInfo = document.getElementById("countInfo");
+const elCounts = document.getElementById("counts");
 const elDaysList = document.getElementById("daysList");
 
-// ---- state
-let daysCache = [];
-let showUnreadOnly = true;
-
-// Android install prompt
-let deferredInstallPrompt = null;
-
 // ---- helpers
-function isIOS() {
-  const ua = navigator.userAgent || "";
-  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
-function isStandalone() {
-  return window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true;
-}
-
-function ymdLocal(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const da = String(d.getDate()).padStart(2, "0");
+function nowJst() { return new Date(Date.now() + JST_OFFSET_MS); }
+function todayYmd() {
+  const d = nowJst();
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const da = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${da}`;
 }
-
-function normalizeDateAny(s) {
-  const t = String(s || "").trim();
-  if (!t) return "";
-  // 2025/12/28 -> 2025-12-28
-  if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(t)) {
-    const [y, m, d] = t.split("/").map((x) => x.padStart(2, "0"));
-    return `${y}-${m}-${d}`;
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
-  return "";
-}
-
-function formatDisplayDate(ymd) {
-  const [y, m, d] = ymd.split("-");
+function ymdToSlash(ymd) {
+  if (!ymd) return "";
+  const [y,m,d] = ymd.split("-");
   return `${y}/${m}/${d}`;
 }
+function ymdCompare(a, b) { return String(a).localeCompare(String(b)); }
 
 function getQueryDate() {
   const u = new URL(location.href);
   const q = u.searchParams.get("date");
-  const n = normalizeDateAny(q);
-  return n || "";
+  return normalizeDateAny(q);
+}
+function normalizeDateAny(s) {
+  if (!s) return "";
+  const x = String(s).trim().replace(/\./g,"/").replace(/-/g,"/");
+  const parts = x.split("/").map(v=>v.trim()).filter(Boolean);
+  if (parts.length === 3) {
+    const y = Number(parts[0]), m = Number(parts[1]), d = Number(parts[2]);
+    if (!y || !m || !d) return "";
+    return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  }
+  return "";
+}
+
+function isIOS() {
+  const ua = navigator.userAgent || "";
+  return /iPhone|iPad|iPod/i.test(ua);
+}
+function isStandalone() {
+  return window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true;
+}
+
+function setStatus(text) {
+  elPushState.textContent = text || "";
 }
 
 // localStorage keys
 function kRead(ymd) { return `read:${ymd}`; }
 function kLike(ymd) { return `like:${ymd}`; }
-
 function isRead(ymd) { return localStorage.getItem(kRead(ymd)) === "1"; }
-function setRead(ymd, v) { localStorage.setItem(kRead(ymd), v ? "1" : "0"); }
-
+function toggleRead(ymd) {
+  const v = isRead(ymd) ? "0" : "1";
+  localStorage.setItem(kRead(ymd), v);
+  return v === "1";
+}
 function isLiked(ymd) { return localStorage.getItem(kLike(ymd)) === "1"; }
-function setLiked(ymd, v) { localStorage.setItem(kLike(ymd), v ? "1" : "0"); }
+function toggleLike(ymd) {
+  const v = isLiked(ymd) ? "0" : "1";
+  localStorage.setItem(kLike(ymd), v);
+  return v === "1";
+}
 
-// ---- SW register
-async function registerSW() {
+function safeJsonParse(s) { try { return JSON.parse(s); } catch { return null; } }
+
+// bible.com → prs.app (新改訳2017)
+function bibleComToPrs(lbUrl) {
+  const m = String(lbUrl || "").trim()
+    .match(/\/bible\/\d+\/([0-9A-Z]+)\.([0-9]+)(?:\.([0-9]+))?\.[A-Z]+/i);
+  if (!m) return "";
+  const book = m[1].toLowerCase();
+  const chapter = m[2];
+  const verse = m[3];
+  return verse
+    ? `https://prs.app/ja/bible/${book}.${chapter}.${verse}.jdb`
+    : `https://prs.app/ja/bible/${book}.${chapter}.jdb`;
+}
+
+function normalizeToAbsoluteUrl(maybeUrl) {
+  const base = APP_URL || location.origin + "/";
+  if (!maybeUrl) return base;
+  try { return new URL(String(maybeUrl).trim(), base).href; } catch { return base; }
+}
+
+// ---- SW / Push
+async function ensureSW() {
   if (!("serviceWorker" in navigator)) return null;
   try {
     await navigator.serviceWorker.register("./sw.js");
@@ -94,7 +115,6 @@ async function registerSW() {
     return null;
   }
 }
-
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -104,67 +124,86 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
-// ---- Push
-async function refreshPushUI(reg) {
-  // ボタンは1つだけ：有効なら隠す／無効なら出す
-  if (!btnEnablePush || !elPushState) return;
-
-  if (!("serviceWorker" in navigator)) {
-    elPushState.textContent = "このブラウザでは通知を使えません";
-    btnEnablePush.disabled = true;
+async function refreshPushUI() {
+  // iOS: Safariでは「ホーム画面に追加」したPWAでないとPushできない
+  if (isIOS() && !isStandalone()) {
+    btnEnablePush.style.display = "none";
+    setStatus("Push通知を有効にするには、ホーム画面に追加してください。");
     return;
   }
 
-  // iOS Safari は「ホーム画面に追加」しないと PushManager が出ない
-  if (!("PushManager" in window)) {
-    if (isIOS() && !isStandalone()) {
-      elPushState.textContent = "Push通知を有効にするには、ホーム画面に追加してください。";
-      btnEnablePush.disabled = true;
-      btnEnablePush.hidden = true; // iOSはここで押しても無理なので隠す
-      // 代わりに「ホーム画面に追加」ボタンを出す（自動モーダルは出さない）
-      if (btnAddHome) btnAddHome.hidden = false;
-      return;
-    }
-    elPushState.textContent = "このブラウザでは通知を使えません";
-    btnEnablePush.disabled = true;
+  // Push非対応
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    btnEnablePush.style.display = "none";
+    setStatus("この端末ではPush通知に対応していません。");
     return;
   }
 
-  const sub = await reg?.pushManager?.getSubscription?.().catch(() => null);
+  // 権限状態
+  const perm = Notification.permission;
+  const reg = await ensureSW();
 
-  if (sub) {
-    elPushState.textContent = "✅ 通知は有効です";
-    btnEnablePush.hidden = true;
+  if (!reg) {
+    // SW登録失敗
+    btnEnablePush.style.display = "none";
+    setStatus("通知機能の初期化に失敗しました（Service Worker）。");
+    return;
+  }
+
+  // 既に購読済みか
+  let sub = null;
+  try { sub = await reg.pushManager.getSubscription(); } catch { sub = null; }
+
+  if (perm === "granted" && sub) {
+    btnEnablePush.style.display = "none";
+    setStatus("✅ 通知は有効です");
   } else {
-    elPushState.textContent = "";
-    btnEnablePush.hidden = false;
-    btnEnablePush.disabled = false;
+    btnEnablePush.style.display = "inline-block";
+    setStatus("");
   }
 }
 
 async function enablePush() {
-  const reg = await navigator.serviceWorker.ready;
-
-  if (!("PushManager" in window)) {
-    // iOS未追加など
-    alert("Push通知を有効にするには、ホーム画面に追加してください。");
+  // iOSでPWAでない場合は「案内」だけ（ポップアップは出さない）
+  if (isIOS() && !isStandalone()) {
+    setStatus("Push通知を有効にするには、ホーム画面に追加してください。");
     return;
   }
-  if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.length < 20) {
-    alert("VAPID 公開鍵が未設定です（index.html の __CONFIG__ を確認してください）");
+
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    setStatus("この端末ではPush通知に対応していません。");
+    return;
+  }
+  if (!VAPID_PUBLIC_KEY) {
+    setStatus("VAPID公開鍵が未設定です（index.html の __CONFIG__ を確認してください）。");
+    return;
+  }
+  if (!WORKER_ORIGIN) {
+    setStatus("WORKER_ORIGIN が未設定です（index.html の __CONFIG__ を確認してください）。");
+    return;
+  }
+
+  setStatus("準備中…");
+
+  const reg = await ensureSW();
+  if (!reg) {
+    setStatus("通知機能の初期化に失敗しました（Service Worker）。");
     return;
   }
 
   const perm = await Notification.requestPermission();
   if (perm !== "granted") {
-    alert("通知が許可されていません（端末の設定で許可してください）");
+    setStatus("通知が許可されませんでした。設定で通知を許可してください。");
     return;
   }
 
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-  });
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  }
 
   const res = await fetch(WORKER_ORIGIN + "/subscribe", {
     method: "POST",
@@ -172,270 +211,279 @@ async function enablePush() {
     body: JSON.stringify(sub),
   });
 
+  const t = await res.text().catch(() => "");
   if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    alert("subscribe 失敗: " + res.status + " " + t);
+    setStatus(`subscribe失敗: ${res.status} ${t}`);
     return;
   }
 
-  await refreshPushUI(reg);
+  await refreshPushUI();
 }
 
-// ---- Today / Days fetch
-async function fetchJson(path) {
-  const r = await fetch(WORKER_ORIGIN + path, { cache: "no-store" });
-  const j = await r.json().catch(() => null);
-  if (!r.ok) {
-    const msg = (j && j.error) ? j.error : `HTTP ${r.status}`;
-    throw new Error(msg);
+// ---- Install prompt (Android Chrome)
+let deferredPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (btnInstall) btnInstall.style.display = "inline-block";
+});
+window.addEventListener("appinstalled", () => {
+  deferredPrompt = null;
+  if (btnInstall) btnInstall.style.display = "none";
+});
+
+async function handleInstallClick() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  try { await deferredPrompt.userChoice; } catch {}
+  deferredPrompt = null;
+  if (btnInstall) btnInstall.style.display = "none";
+}
+
+// ---- Worker API
+async function fetchJson(url) {
+  const r = await fetch(url, { cache: "no-store" });
+  const t = await r.text();
+  const j = safeJsonParse(t);
+  return { ok: r.ok, status: r.status, json: j, text: t };
+}
+
+async function loadToday() {
+  const { ok, status, json, text } = await fetchJson(WORKER_ORIGIN + "/today");
+  if (!ok || !json?.ok) {
+    return { ok:false, error: json?.error || `today fetch failed: ${status} ${text}` };
   }
-  return j;
+  // pageUrl から ymd 抜き出し（無ければJST今日）
+  const ymd = normalizeDateAny(new URL(json.pageUrl || (APP_URL + "?date=" + todayYmd()), APP_URL).searchParams.get("date")) || todayYmd();
+  return {
+    ok:true,
+    ymd,
+    date: json.date || ymdToSlash(ymd),
+    weekday: json.weekday || "",
+    verse: json.verse || "",
+    comment: json.comment || "",
+    buttons: Array.isArray(json.buttons) ? json.buttons : [],
+    pageUrl: normalizeToAbsoluteUrl(json.pageUrl || (`?date=${encodeURIComponent(ymd)}`)),
+  };
 }
 
-function renderToday(today) {
-  const dateYmd = normalizeDateAny(today?.pageUrl?.match(/date=(\d{4}-\d{2}-\d{2})/)?.[1]) || normalizeDateAny(today?.date) || getQueryDate() || ymdLocal(new Date());
-  const weekday = today?.weekday ? `（${today.weekday}）` : "";
+// days: 365日分（未来は表示しない）
+async function loadDaysList(limit = 365) {
+  const today = todayYmd();
+  // 「昨日まで」
+  const d = nowJst();
+  d.setUTCDate(d.getUTCDate() - 1);
+  const until = `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`;
 
-  if (elTodayDate) elTodayDate.textContent = `${formatDisplayDate(dateYmd)} ${weekday}`.trim();
-  if (elTodayTitle) elTodayTitle.textContent = today?.verse || today?.title || "今日の聖書箇所";
-  if (elTodayVerse) elTodayVerse.textContent = ""; // 追加の本文表示があればここに
+  // できるだけ互換：/days?limit=365&until=YYYY-MM-DD
+  const u = new URL(WORKER_ORIGIN + "/days");
+  u.searchParams.set("limit", String(limit));
+  u.searchParams.set("until", until);
+
+  const { ok, status, json, text } = await fetchJson(u.toString());
+  if (!ok || !json?.ok) {
+    return { ok:false, error: json?.error || `days fetch failed: ${status} ${text}`, days: [] };
+  }
+
+  const days = Array.isArray(json.days) ? json.days : [];
+  // 未来を除外（念のため）
+  const filtered = days
+    .map(d => {
+      const ymd = d.ymd || normalizeDateAny(d.pageUrl ? new URL(d.pageUrl, APP_URL).searchParams.get("date") : "");
+      return { ...d, ymd };
+    })
+    .filter(d => d.ymd && ymdCompare(d.ymd, today) <= 0) // 今日含む可能性があってもOK
+    .filter(d => ymdCompare(d.ymd, until) <= 0); // 昨日まで
+
+  // 新しい日付が上に来る想定。並びが逆でも保険でソート。
+  filtered.sort((a,b)=> ymdCompare(b.ymd, a.ymd));
+  return { ok:true, until, days: filtered };
+}
+
+// ---- Render
+function renderToday(data) {
+  const ymd = data.ymd;
+  elTodayDate.textContent = `${data.date}${data.weekday ? `（${data.weekday}）` : ""}`;
+  elTodayVerse.textContent = data.verse || "";
+  elTodayComment.textContent = data.comment || "";
 
   // buttons
-  if (elTodayButtons) {
-    elTodayButtons.innerHTML = "";
-    const btns = Array.isArray(today?.buttons) ? today.buttons : [];
-    for (const b of btns) {
-      const wrap = document.createElement("div");
-      wrap.className = "btnRow";
+  elTodayButtons.innerHTML = "";
+  for (const b of (data.buttons || [])) {
+    const prs = b.prsUrl || bibleComToPrs(b.lbUrl);
+    const lb = b.lbUrl || "";
+    const label = b.label || data.verse || "聖書";
 
-      const a1 = document.createElement("a");
-      a1.className = "btn blue";
-      a1.href = b.prsUrl || "#";
-      a1.target = "_blank";
-      a1.rel = "noopener";
-      a1.textContent = `${b.label}（新改訳2017）`;
-
-      const a2 = document.createElement("a");
-      a2.className = "btn orange";
-      a2.href = b.lbUrl || "#";
-      a2.target = "_blank";
-      a2.rel = "noopener";
-      a2.textContent = `${b.label}（LB）`;
-
-      wrap.appendChild(a1);
-      wrap.appendChild(a2);
-      elTodayButtons.appendChild(wrap);
+    if (prs) {
+      const a = document.createElement("a");
+      a.className = "pill prs";
+      a.textContent = `${label}（新改訳2017）`;
+      a.href = prs;
+      a.target = "_blank";
+      a.rel = "noopener";
+      elTodayButtons.appendChild(a);
+    }
+    if (lb) {
+      const a = document.createElement("a");
+      a.className = "pill lb";
+      a.textContent = `${label}（LB）`;
+      a.href = lb;
+      a.target = "_blank";
+      a.rel = "noopener";
+      elTodayButtons.appendChild(a);
     }
   }
 
-  if (elTodayComment) elTodayComment.textContent = today?.comment || "";
-
-  // heart (today)
-  if (btnLikeToday) {
-    const liked = isLiked(dateYmd);
-    btnLikeToday.classList.toggle("liked", liked);
-    btnLikeToday.textContent = liked ? "♥" : "♡";
-    btnLikeToday.onclick = () => {
-      const now = !isLiked(dateYmd);
-      setLiked(dateYmd, now);
-      setRead(dateYmd, true); // いいね＝読了として扱う
-      btnLikeToday.classList.toggle("liked", now);
-      btnLikeToday.textContent = now ? "♥" : "♡";
-      renderDaysList(); // 一覧も更新
-    };
-  }
-
-  // 今日を開いた＝読んだ扱い（好みで）
-  setRead(dateYmd, true);
-}
-
-function buildRow(day) {
-  const ymd = normalizeDateAny(day.date);
-  const verse = day.verse || day.title || "";
-  const pageUrl = day.pageUrl || (APP_URL + `?date=${encodeURIComponent(ymd)}`);
-
-  const row = document.createElement("div");
-  row.className = "dayRow";
-
-  const cb = document.createElement("button");
-  cb.className = "check";
-  cb.type = "button";
-  cb.textContent = isRead(ymd) ? "☑" : "☐";
-  cb.onclick = (e) => {
-    e.stopPropagation();
-    const v = !isRead(ymd);
-    setRead(ymd, v);
-    cb.textContent = v ? "☑" : "☐";
-    renderDaysList();
-  };
-
-  const mid = document.createElement("div");
-  mid.className = "mid";
-  const d = document.createElement("div");
-  d.className = "d";
-  d.textContent = `${formatDisplayDate(ymd)}${day.weekday ? `（${day.weekday}）` : ""}`;
-  const v = document.createElement("div");
-  v.className = "v";
-  v.textContent = verse;
-  mid.appendChild(d);
-  mid.appendChild(v);
-
-  const heart = document.createElement("button");
-  heart.className = "heartSmall";
-  heart.type = "button";
+  // like
   const liked = isLiked(ymd);
-  heart.textContent = liked ? "♥" : "♡";
-  heart.classList.toggle("liked", liked);
-  heart.onclick = (e) => {
-    e.stopPropagation();
-    const now = !isLiked(ymd);
-    setLiked(ymd, now);
-    setRead(ymd, true);
-    heart.textContent = now ? "♥" : "♡";
-    heart.classList.toggle("liked", now);
-    renderDaysList();
+  btnLikeToday.classList.toggle("on", liked);
+  btnLikeToday.textContent = liked ? "♥" : "♡";
+  btnLikeToday.onclick = () => {
+    const on = toggleLike(ymd);
+    btnLikeToday.classList.toggle("on", on);
+    btnLikeToday.textContent = on ? "♥" : "♡";
+    // 一覧も更新
+    renderDaysList(currentDays, currentFilterUnreadOnly);
   };
-
-  row.appendChild(cb);
-  row.appendChild(mid);
-  row.appendChild(heart);
-
-  row.onclick = () => {
-    setRead(ymd, true);
-    location.href = pageUrl;
-  };
-
-  return row;
 }
 
-function renderDaysList() {
-  if (!elDaysList) return;
-
-  const today = new Date();
-  const until = new Date(today);
-  until.setDate(today.getDate() - 1); // ★昨日まで
-  const untilYmd = ymdLocal(until);
-
-  // 未来は出さない + 365日分だけ
-  const filtered = daysCache
-    .map((x) => ({
-      ...x,
-      date: normalizeDateAny(x.date),
-    }))
-    .filter((x) => x.date && x.date <= untilYmd)
-    .sort((a, b) => (a.date < b.date ? 1 : -1))
-    .slice(0, 365);
-
-  const unreadCount = filtered.filter((x) => !isRead(x.date)).length;
-  const readCount = filtered.length - unreadCount;
-
-  if (elCountInfo) elCountInfo.textContent = `既読 ${readCount} / 未読 ${unreadCount}`;
-
-  const view = showUnreadOnly ? filtered.filter((x) => !isRead(x.date)) : filtered;
-
-  elDaysList.innerHTML = "";
-  for (const day of view) {
-    elDaysList.appendChild(buildRow(day));
+function renderCounts(days) {
+  let read = 0, unread = 0;
+  for (const d of days) {
+    if (!d.ymd) continue;
+    if (isRead(d.ymd)) read++; else unread++;
   }
+  elCounts.textContent = `既読 ${read} / 未読 ${unread}`;
 }
 
-// ---- Install (Android) / Add to Home (iOS)
-function setupInstallUI() {
-  // Android: beforeinstallprompt が来た時だけ出す
-  window.addEventListener("beforeinstallprompt", (e) => {
+function makeItem(day) {
+  const ymd = day.ymd;
+  const item = document.createElement("div");
+  item.className = "item";
+
+  const mark = document.createElement("button");
+  mark.className = "mark" + (isRead(ymd) ? " on" : "");
+  mark.title = "既読/未読";
+  mark.onclick = () => {
+    const on = toggleRead(ymd);
+    mark.classList.toggle("on", on);
+    renderCounts(currentDays);
+    if (currentFilterUnreadOnly) {
+      renderDaysList(currentDays, true);
+    }
+  };
+
+  const link = document.createElement("a");
+  link.className = "link";
+  link.href = `${APP_URL}?date=${encodeURIComponent(ymd)}`;
+  link.textContent = `${day.date || ymdToSlash(ymd)} ${day.weekday ? `(${day.weekday})` : ""} ${day.verse || ""}`;
+  const sub = document.createElement("span");
+  sub.className = "sub";
+  sub.textContent = "タップして表示";
+  link.appendChild(sub);
+
+  const like = document.createElement("button");
+  const liked = isLiked(ymd);
+  like.className = "likeMini" + (liked ? " on" : "");
+  like.textContent = liked ? "♥" : "♡";
+  like.onclick = (e) => {
     e.preventDefault();
-    deferredInstallPrompt = e;
-    if (btnInstall && !isStandalone()) btnInstall.hidden = false;
-  });
+    e.stopPropagation();
+    const on = toggleLike(ymd);
+    like.classList.toggle("on", on);
+    like.textContent = on ? "♥" : "♡";
+  };
 
-  if (btnInstall) {
-    btnInstall.addEventListener("click", async () => {
-      if (!deferredInstallPrompt) return;
-      deferredInstallPrompt.prompt();
-      await deferredInstallPrompt.userChoice.catch(() => null);
-      deferredInstallPrompt = null;
-      btnInstall.hidden = true;
-    });
-  }
-
-  // iOS: 自動で邪魔なモーダルを出さない。ボタンで開く
-  if (btnAddHome) {
-    btnAddHome.hidden = !(isIOS() && !isStandalone());
-    btnAddHome.addEventListener("click", () => {
-      if (modalAddHome) modalAddHome.hidden = false;
-    });
-  }
-  if (btnCloseAddHome) {
-    btnCloseAddHome.addEventListener("click", () => {
-      if (modalAddHome) modalAddHome.hidden = true;
-    });
-  }
-  if (modalAddHome) {
-    modalAddHome.addEventListener("click", (e) => {
-      if (e.target === modalAddHome) modalAddHome.hidden = true;
-    });
-  }
+  item.appendChild(mark);
+  item.appendChild(link);
+  item.appendChild(like);
+  return item;
 }
 
-// ---- init
+function renderDaysList(days, unreadOnly) {
+  elDaysList.innerHTML = "";
+  const selected = days.filter(d => d.ymd);
+
+  const show = unreadOnly ? selected.filter(d => !isRead(d.ymd)) : selected;
+  for (const d of show) elDaysList.appendChild(makeItem(d));
+
+  renderCounts(selected);
+}
+
+// ---- main
+let currentDays = [];
+let currentFilterUnreadOnly = true;
+
 async function main() {
+  // Push UI
+  btnEnablePush?.addEventListener("click", enablePush);
+  await refreshPushUI();
+
+  // Install UI
+  btnInstall?.addEventListener("click", handleInstallClick);
+
+  // Load data
   if (!WORKER_ORIGIN) {
-    alert("WORKER_ORIGIN が未設定です（index.html の __CONFIG__ を確認）");
+    elTodayVerse.textContent = "WORKER_ORIGIN が未設定です";
+    elTodayComment.textContent = "index.html の window.__CONFIG__ を確認してください。";
     return;
   }
 
-  setupInstallUI();
-  const reg = await registerSW();
-  if (btnEnablePush) btnEnablePush.addEventListener("click", enablePush);
-  await refreshPushUI(reg);
-
-  // date param
-  const qDate = getQueryDate();
-
-  // today
-  try {
-    const today = await fetchJson("/today" + (qDate ? `?date=${encodeURIComponent(qDate)}` : ""));
-    if (today?.ok) renderToday(today);
-  } catch (e) {
-    // 画面が真っ白にならないように最小表示
-    if (elTodayDate) elTodayDate.textContent = "";
-    if (elTodayTitle) elTodayTitle.textContent = "読み込みに失敗しました";
-    if (elTodayComment) elTodayComment.textContent = String(e?.message || e);
+  const t = await loadToday();
+  if (!t.ok) {
+    elTodayVerse.textContent = "読み込みに失敗しました";
+    elTodayComment.textContent = t.error || "";
+    return;
   }
+
+  // 表示したい日（クエリがあればその日、なければ今日）
+  const q = getQueryDate();
+  const selectedYmd = q || t.ymd;
+
+  // まず今日を表示（後で過去日に切り替え）
+  renderToday(t);
 
   // days list
-  try {
-    // ★/days がある前提（無ければここだけ 404 になります）
-    // 例: /days?until=YYYY-MM-DD&limit=365
-    const todayLocal = new Date();
-    const until = new Date(todayLocal);
-    until.setDate(todayLocal.getDate() - 1);
-    const untilYmd = ymdLocal(until);
-
-    const out = await fetchJson(`/days?until=${encodeURIComponent(untilYmd)}&limit=365`);
-    const arr = Array.isArray(out) ? out : (out.days || out.items || out.data || []);
-    daysCache = Array.isArray(arr) ? arr : [];
-  } catch {
-    daysCache = [];
+  const daysRes = await loadDaysList(365);
+  if (daysRes.ok) {
+    currentDays = daysRes.days || [];
+    currentFilterUnreadOnly = true;
+    renderDaysList(currentDays, true);
   }
 
-  // filter UI
-  if (btnFilterUnread && btnFilterAll) {
-    btnFilterUnread.addEventListener("click", () => {
-      showUnreadOnly = true;
-      btnFilterUnread.classList.add("active");
-      btnFilterAll.classList.remove("active");
-      renderDaysList();
-    });
-    btnFilterAll.addEventListener("click", () => {
-      showUnreadOnly = false;
-      btnFilterAll.classList.add("active");
-      btnFilterUnread.classList.remove("active");
-      renderDaysList();
-    });
+  // クエリ日が今日以外なら、一覧から探して差し替える（未来は表示しない仕様）
+  if (selectedYmd && selectedYmd !== t.ymd && currentDays.length) {
+    const hit = currentDays.find(d => d.ymd === selectedYmd);
+    if (hit) {
+      // hit には buttons が無い可能性があるため、最低限で表示
+      renderToday({
+        ymd: hit.ymd,
+        date: hit.date || ymdToSlash(hit.ymd),
+        weekday: hit.weekday || "",
+        verse: hit.verse || "",
+        comment: hit.comment || "",
+        buttons: hit.buttons || [],
+        pageUrl: hit.pageUrl || `${APP_URL}?date=${encodeURIComponent(hit.ymd)}`
+      });
+    }
   }
 
-  renderDaysList();
+  // Filters
+  btnFilterUnread?.addEventListener("click", () => {
+    currentFilterUnreadOnly = true;
+    btnFilterUnread.classList.add("on");
+    btnFilterAll.classList.remove("on");
+    renderDaysList(currentDays, true);
+  });
+  btnFilterAll?.addEventListener("click", () => {
+    currentFilterUnreadOnly = false;
+    btnFilterAll.classList.add("on");
+    btnFilterUnread.classList.remove("on");
+    renderDaysList(currentDays, false);
+  });
 }
 
-main();
+main().catch((e) => {
+  elTodayVerse.textContent = "エラーが発生しました";
+  elTodayComment.textContent = String(e?.stack || e);
+});
