@@ -154,80 +154,87 @@
     });
   }
 
-  function renderList() {
-    if (!els.list) return;
-    els.list.innerHTML = "";
-    const filtered = filter === "unread" ? days.filter((d) => !isRead(d.ymd)) : days;
+function renderList() {
+  if (!els.list) return;
+  els.list.innerHTML = "";
+  const filtered = filter === "unread" ? days.filter((d) => !isRead(d.ymd)) : days;
 
-    filtered.forEach((d) => {
-      const li = document.createElement("li");
-      li.className = "item";
+  filtered.forEach((d) => {
+    const li = document.createElement("li");
+    li.className = "item";
 
-      const left = document.createElement("div");
-      const meta = document.createElement("div");
-      meta.className = "meta";
-      meta.textContent = `${d.date} ${d.weekday}`.trim();
+    const left = document.createElement("div");
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = `${d.date} ${d.weekday}`.trim();
 
-      const titleText = d.title || d.verse || "聖書箇所";
-      const verseText = d.verse && d.verse !== titleText ? d.verse : "";
+    const titleText = d.title || d.verse || "聖書箇所";
+    const verseText = d.verse && d.verse !== titleText ? d.verse : "";
 
-      const title = document.createElement("div");
-      title.className = "title";
-      title.textContent = titleText;
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = titleText;
 
-      left.append(meta, title);
-      if (verseText) {
-        const verse = document.createElement("div");
-        verse.className = "meta";
-        verse.textContent = verseText;
-        left.append(verse);
-      }
+    left.append(meta, title);
+    if (verseText) {
+      const verse = document.createElement("div");
+      verse.className = "meta";
+      verse.textContent = verseText;
+      left.append(verse);
+    }
 
-      const primaryLink =
-        (d.buttons && d.buttons[0] && (d.buttons[0].prsUrl || d.buttons[0].lbUrl)) || "";
-      if (primaryLink) {
-        li.style.cursor = "pointer";
-        li.addEventListener("click", (e) => {
-          if (e.target.tagName === "BUTTON") return;
-          window.open(primaryLink, "_blank", "noopener");
-        });
-      }
-
-      const controls = document.createElement("div");
-      controls.className = "controls";
-
-      const btnRead = document.createElement("button");
-      btnRead.textContent = isRead(d.ymd) ? "📖 既読" : "📖 未読";
-      btnRead.className = "pill";
-      btnRead.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        const now = !isRead(d.ymd);
-        setRead(d.ymd, now);
-        renderList();
-        updateTodayButtons(todayYmd);
+    // リンクボタンをリストにも表示（PRS/LB 全部）
+    if (d.buttons && d.buttons.length) {
+      const links = document.createElement("div");
+      links.className = "link-buttons";
+      d.buttons.forEach((b) => {
+        const a = document.createElement("a");
+        a.href = b.prsUrl || b.lbUrl || "#";
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = b.label || "リンク";
+        if (/LB/i.test(b.label || "")) a.classList.add("lb");
+        links.appendChild(a);
       });
+      left.append(links);
+    }
 
-      const btnLike = document.createElement("button");
-      btnLike.textContent = isLiked(d.ymd) ? "♥ いいね済" : "♡ いいね";
-      btnLike.className = "pill secondary";
-      btnLike.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        const now = !isLiked(d.ymd);
-        setLike(d.ymd, now);
-        renderList();
-        if (d.ymd === todayYmd) updateTodayButtons(todayYmd);
-      });
+    const controls = document.createElement("div");
+    controls.className = "controls";
 
-      controls.append(btnRead, btnLike);
-      li.append(left, controls);
-      els.list.appendChild(li);
+    const btnRead = document.createElement("button");
+    btnRead.textContent = isRead(d.ymd) ? "📖 既読" : "📖 未読";
+    btnRead.className = "pill";
+    btnRead.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const now = !isRead(d.ymd);
+      setRead(d.ymd, now);
+      renderList();
+      updateTodayButtons(todayYmd);
     });
 
-    const readCount = days.filter((d) => isRead(d.ymd)).length;
-    const unreadCount = days.length - readCount;
-    setText(els.countRead, readCount);
-    setText(els.countUnread, unreadCount);
-  }
+    const btnLike = document.createElement("button");
+    btnLike.textContent = isLiked(d.ymd) ? "♥ いいね済" : "♡ いいね";
+    btnLike.className = "pill secondary";
+    btnLike.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const now = !isLiked(d.ymd);
+      setLike(d.ymd, now);
+      renderList();
+      if (d.ymd === todayYmd) updateTodayButtons(todayYmd);
+    });
+
+    controls.append(btnRead, btnLike);
+    li.append(left, controls);
+    els.list.appendChild(li);
+  });
+
+  const readCount = days.filter((d) => isRead(d.ymd)).length;
+  const unreadCount = days.length - readCount;
+  setText(els.countRead, readCount);
+  setText(els.countUnread, unreadCount);
+}
+
 
   function updateTodayButtons(ymd) {
     if (els.btnTodayRead) els.btnTodayRead.textContent = isRead(ymd) ? "✔️ 既読済み" : "✔️ 既読にする";
