@@ -8,63 +8,46 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icons/icon-192.png" />
   <style>
-    :root {
-      --bg1: #f2f6ff;
-      --bg2: #e7f1ff;
-      --card: #ffffff;
-      --text: #1e2533;
-      --muted: #6c7383;
-      --primary: #5b8af7;
-      --primary-soft: #dce7ff;
-      --accent: #f7c95b;
-      --accent-soft: #fbeccd;
-      --shadow: 0 10px 35px rgba(0,0,0,0.08);
-      --radius: 18px;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Helvetica Neue", "Segoe UI", Arial, sans-serif;
-      background: radial-gradient(circle at 25% 20%, var(--bg2), var(--bg1) 50%, #f9fbff 80%);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-    }
-    main { width: min(960px, 100%); padding: 18px; }
-    .card { background: var(--card); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); margin-bottom: 16px; }
-    h1 { margin: 0 0 12px; font-size: 24px; }
-    .top-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
-    button {
-      border: none; border-radius: 14px; padding: 12px 15px; font-size: 15px; font-weight: 650;
-      color: #1e2533; background: #fff; box-shadow: 0 5px 14px rgba(0,0,0,0.08);
-      cursor: pointer; transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
-    }
-    button:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
-    button:active { transform: translateY(1px); }
-    .pill { background: var(--accent-soft); color: #4b3600; }
-    .pill.secondary { background: var(--primary-soft); color: var(--primary); }
-    .status { font-size: 13px; color: var(--muted); margin-top: 4px; }
-    .today-title { font-size: 20px; font-weight: 750; margin: 4px 0; }
-    .verse { font-size: 16px; margin: 8px 0; line-height: 1.5; }
-    .comment { font-size: 14px; color: var(--muted); line-height: 1.6; }
-    .link-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-    .link-buttons a {
-      text-decoration: none; background: var(--primary-soft); color: var(--primary);
-      padding: 10px 12px; border-radius: 12px; font-size: 14px; font-weight: 700;
-      border: 1px solid #d0dcff;
-    }
-    .link-buttons a.lb { background: var(--accent-soft); color: #6b4b00; border-color: #f2dfac; }
-    .list-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .filters button { padding: 8px 12px; box-shadow: none; }
-    .filters .active { background: var(--accent); color: #4b3600; }
-    .counts { font-size: 13px; color: var(--muted); }
-    ul { list-style: none; padding: 0; margin: 12px 0 0; }
-    li.item { background: #fff; border-radius: 14px; padding: 12px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-    .item .meta { font-size: 13px; color: var(--muted); }
-    .item .title { font-size: 15px; font-weight: 700; }
-    .controls { display: flex; gap: 8px; flex-wrap: wrap; }
-    .ios-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+:root {
+  --bg1: #f4f7ff;
+  --bg2: #e9f1ff;
+  --card: #ffffff;
+  --text: #1f2433;
+  --muted: #6c7383;
+  --primary: #5b8af7;
+  --primary-soft: #dce7ff;
+  --accent: #f6c96c;
+  --accent-soft: #f9edcf;
+  --shadow: 0 8px 30px rgba(0,0,0,0.06);
+  --radius: 16px;
+}
+body { background: radial-gradient(circle at 20% 20%, var(--bg2), var(--bg1) 50%, #f9fbff 80%); }
+main { padding: 14px; max-width: 960px; }
+.card { border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+h1 { font-size: 22px; }
+.today-title, .title { font-size: 18px; }
+.verse, .comment { line-height: 1.6; }
+.link-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.link-buttons a {
+  display: block;
+  text-align: center;
+  padding: 11px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  background: var(--primary-soft);
+  color: var(--primary);
+  border: 1px solid #d0dcff;
+}
+.link-buttons a.lb { background: var(--accent-soft); color: #6b4b00; border-color: #f2dfac; }
+.controls { gap: 10px; }
+button { padding: 11px 13px; border-radius: 12px; }
+.meta { color: var(--muted); font-size: 13px; }
+
   </style>
   <script>
     window.__CONFIG__ = {
