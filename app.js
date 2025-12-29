@@ -122,12 +122,13 @@
     if (!container) return;
     container.innerHTML = "";
     (buttons || []).forEach((b) => {
-      const a1 = document.createElement("a");
-      a1.href = b.prsUrl || b.lbUrl || "#";
-      a1.target = "_blank";
-      a1.rel = "noopener noreferrer";
-      a1.textContent = b.label || "リンク";
-      container.appendChild(a1);
+      const a = document.createElement("a");
+      a.href = b.prsUrl || b.lbUrl || "#";
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = b.label || "リンク";
+      if (/LB/i.test(b.label || "")) a.classList.add("lb");
+      container.appendChild(a);
     });
   }
 
@@ -146,7 +147,7 @@
       meta.textContent = `${d.date} ${d.weekday}`.trim();
       const title = document.createElement("div");
       title.className = "title";
-      title.textContent = d.title;
+      title.textContent = d.title || d.verse || "今日の聖句";
       const verse = document.createElement("div");
       verse.className = "meta";
       verse.textContent = d.verse;
@@ -156,7 +157,7 @@
       controls.className = "controls";
 
       const btnRead = document.createElement("button");
-      btnRead.textContent = isRead(d.ymd) ? "✔️ 既読" : "📖 未読";
+      btnRead.textContent = isRead(d.ymd) ? "📖 既読" : "📖 未読";
       btnRead.className = "pill";
       btnRead.addEventListener("click", () => {
         const now = !isRead(d.ymd);
@@ -192,8 +193,18 @@
   }
 
   function bindEvents() {
-    els.btnFilterUnread?.addEventListener("click", () => { filter = "unread"; renderList(); });
-    els.btnFilterAll?.addEventListener("click", () => { filter = "all"; renderList(); });
+    els.btnFilterUnread?.addEventListener("click", () => {
+      filter = "unread";
+      els.btnFilterUnread.classList.add("active");
+      els.btnFilterAll?.classList.remove("active");
+      renderList();
+    });
+    els.btnFilterAll?.addEventListener("click", () => {
+      filter = "all";
+      els.btnFilterAll.classList.add("active");
+      els.btnFilterUnread?.classList.remove("active");
+      renderList();
+    });
 
     els.btnLike?.addEventListener("click", () => {
       if (!todayYmd) return;
@@ -251,11 +262,10 @@
       return;
     }
     try {
-      setText(els.pushStatus, "通知を準備中…");
+      setText(els.pushStatus, "準備中…");
       const reg = await registerServiceWorker();
-      const permission = Notification.permission;
-      if (permission === "granted") {
-        const sub = await reg.pushManager.getSubscription() || await subscribe(reg);
+      if (Notification.permission === "granted") {
+        const sub = (await reg.pushManager.getSubscription()) || (await subscribe(reg));
         await sendSub(sub);
         setText(els.pushStatus, "通知を登録しました");
         hidePushButton();
@@ -314,10 +324,7 @@
     bindEvents();
     updateInstallUi();
     loadData();
-    // hide push button if already granted
-    if (Notification?.permission === "granted") {
-      hidePushButton();
-    }
+    if (Notification?.permission === "granted") hidePushButton();
     registerServiceWorker().catch(() => {});
   }
 
