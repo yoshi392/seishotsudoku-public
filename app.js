@@ -21,6 +21,28 @@
     countUnread: qs("countUnread"),
     list: qs("list"),
   };
+// 冒頭の定義群の近くに追加
+const isIOS = () => /iPhone|iPad|iPod/i.test(window.navigator.userAgent);
+
+// bindEvents の後あたりに追加
+function setInstallHint() {
+  const el = document.getElementById("installHint");
+  if (!el) return;
+  el.textContent = isIOS()
+    ? "iOSでは「ホーム画面に追加」してから通知を許可してください。"
+    : "";
+}
+
+// init 内で呼ぶ（最初でOK）
+function init() {
+  resetIfNewYear();
+  bindEvents();
+  setInstallHint(); // ←追加
+  updateInstallUi();
+  loadData();
+  if (Notification?.permission === "granted") hidePushButton();
+  registerServiceWorker().catch(() => {});
+}
 
   let installPrompt = null;
   let days = [];
