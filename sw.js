@@ -1,21 +1,15 @@
 // sw.js
 
-self.addEventListener("install", (event) => {
-  self.skipWaiting();
-});
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 
-self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
-});
-
-// 🔔 Push受信
+// 🔔 Push受信（同じtagで上書き→Androidの数字が増えにくい）
 self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
   const title = data.title || "聖書通読";
   const url = data.url || "/";
 
   event.waitUntil((async () => {
-    // 同じ tag で上書き（Androidで通知が溜まって数字が増えるのを抑制）
     const tag = "seishotsudoku-daily";
     const existing = await self.registration.getNotifications({ tag });
     for (const n of existing) n.close();
