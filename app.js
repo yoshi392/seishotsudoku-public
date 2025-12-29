@@ -4,6 +4,7 @@
   const VAPID_KEY = cfg.VAPID_PUBLIC_KEY || "";
   const qs = (id) => document.getElementById(id);
   const isIOS = () => /iPhone|iPad|iPod/i.test(window.navigator.userAgent);
+  const INSTALLED_KEY = "pwa_installed";
 
   const els = {
     btnPush: qs("btnPush"),
@@ -33,6 +34,18 @@
   const isStandalone = () =>
     (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
     window.navigator.standalone === true;
+
+  function alreadyInstalled() {
+    return isStandalone() || localStorage.getItem(INSTALLED_KEY) === "1";
+  }
+  function markInstalled() {
+    localStorage.setItem(INSTALLED_KEY, "1");
+    updateInstallUi();
+  }
+
+  window.addEventListener("appinstalled", () => {
+    markInstalled();
+  });
 
   function resetIfNewYear() {
     const nowYear = String(new Date().getFullYear());
@@ -325,35 +338,40 @@
     });
 
     els.btnInstall?.addEventListener("click", async () => {
-      if (isStandalone()) return;
+      if (alreadyInstalled()) return;
       if (installPrompt) {
         installPrompt.prompt();
         await installPrompt.userChoice;
         installPrompt = null;
-        updateInstallUi();
+        markInstalled(); // 成功/失敗どちらでも一旦隠す
       } else {
-        setText(els.pushStatus, "iOSは共有→ホーム画面に追加でインストールできます");
+        setText(els.pushStatus, "Chromeメニューの「ホーム画面に追加」からもインストールできます");
       }
     });
 
     els.btnPush?.addEventListener("click", enablePush);
   }
 
-// インストールボタンの表示制御を変更
-function updateInstallUi() {
-  if (!els.btnInstall) return;
-  if (isStandalone()) {
-    els.btnInstall.style.display = "none"; // 完全に非表示
-  } else if (installPrompt) {
+  function updateInstallUi() {
+    if (!els.btnInstall) return;
+    if (alreadyInstalled()) {
+      els.btnInstall.style.display = "none";
+      if (els.installHint) { els.installHint.textContent = ""; els.installHint.style.display = "none"; }
+      return;
+    }
     els.btnInstall.style.display = "";
     els.btnInstall.disabled = false;
     els.btnInstall.textContent = "⬇️ アプリをインストール";
-  } else {
-    els.btnInstall.style.display = "";
-    els.btnInstall.disabled = false;
-    els.btnInstall.textContent = "⬇️ アプリをインストール";
+    if (els.installHint) {
+      if (isIOS()) {
+        els.installHint.style.display = "block";
+        els.installHint.textContent = "iOSでは「ホーム画面に追加」してから通知を許可してください。";
+      } else {
+        els.installHint.textContent = "";
+        els.installHint.style.display = "none";
+      }
+    }
   }
-}
 
   async function enablePush() {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
@@ -419,29 +437,29 @@ function updateInstallUi() {
     return output;
   }
 
-function setInstallHint() {
-  if (!els.installHint) return;
-  if (isStandalone()) {
-    els.installHint.textContent = "";
-    els.installHint.style.display = "none";
-  } else if (/iPhone|iPad|iPod/i.test(window.navigator.userAgent)) {
-    els.installHint.style.display = "block";
-    els.installHint.textContent = "iOSでは「ホーム画面に追加」してから通知を許可してください。";
-  } else {
-    els.installHint.textContent = "";
-    els.installHint.style.display = "none";
+  function setInstallHint() {
+    if (!els.installHint) return;
+    if (alreadyInstalled()) {
+      els.installHint.textContent = "";
+      els.installHint.style.display = "none";
+    } else if (isIOS()) {
+      els.installHint.style.display = "block";
+      els.installHint.textContent = "iOSでは「ホーム画面に追加」してから通知を許可してください。";
+    } else {
+      els.installHint.textContent = "";
+      els.installHint.style.display = "none";
+    }
   }
-}
 
-function init() {
-  resetIfNewYear();
-  bindEvents();
-  setInstallHint();
-  updateInstallUi();
-  loadData();
-  if (Notification?.permission === "granted") hidePushButton();
-  registerServiceWorker().catch(() => {});
-}
+  function init() {
+    resetIfNewYear();
+    bindEvents();
+    setInstallHint();
+    updateInstallUi();
+    loadData();
+    if (Notification?.permission === "granted") hidePushButton();
+    registerServiceWorker().catch(() => {});
+  }
 
   document.addEventListener("DOMContentLoaded", init);
 })();
