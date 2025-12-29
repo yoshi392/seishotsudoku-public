@@ -183,13 +183,12 @@
         left.append(verse);
       }
 
-      // カード全体クリックで聖書箇所を開く（PRS優先→LB）
       const primaryLink =
         (d.buttons && d.buttons[0] && (d.buttons[0].prsUrl || d.buttons[0].lbUrl)) || "";
       if (primaryLink) {
         li.style.cursor = "pointer";
         li.addEventListener("click", (e) => {
-          if (e.target.tagName === "BUTTON") return; // ボタン操作は無視
+          if (e.target.tagName === "BUTTON") return;
           window.open(primaryLink, "_blank", "noopener");
         });
       }
