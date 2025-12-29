@@ -84,10 +84,10 @@
           ymd,
           date: d.date || ymd.replaceAll("-", "/"),
           weekday: d.weekday || "",
-          title: d.title || "今日の聖句",
+          title: d.title || d.verse || "今日の聖句",
           verse: d.verse || "",
           comment: d.comment || "",
-          buttons: normalizeButtons(d.buttons, d.urls),
+          buttons: normalizeButtons(d.buttons, d.urls, d.title || d.verse),
         };
       })
       .filter(Boolean)
@@ -95,11 +95,12 @@
       .sort((a, b) => (a.ymd < b.ymd ? 1 : -1));
   }
 
-  function normalizeButtons(buttons, urls) {
+  function normalizeButtons(buttons, urls, label) {
     if (Array.isArray(buttons) && buttons.length) return buttons;
     if (!Array.isArray(urls)) return [];
+    const text = label || "聖句";
     return urls.map((u, i) => ({
-      label: `リンク${urls.length > 1 ? `(${i + 1})` : ""}`,
+      label: `${text}${urls.length > 1 ? `(${i + 1})` : ""}`,
       prsUrl: u,
       lbUrl: u,
     }));
@@ -111,7 +112,7 @@
     todayYmd = ymd;
 
     setText(els.todayDate, `${t.date} ${t.weekday || ""}`.trim());
-    setText(els.todayTitle, t.title || "今日の聖句");
+    setText(els.todayTitle, t.title || t.verse || "今日の聖句");
     setText(els.todayVerse, t.verse || "");
     setText(els.todayComment, t.comment || "");
     renderButtons(els.todayButtons, t.buttons || []);
@@ -147,7 +148,7 @@
       meta.textContent = `${d.date} ${d.weekday}`.trim();
       const title = document.createElement("div");
       title.className = "title";
-      title.textContent = d.title || d.verse || "今日の聖句";
+      title.textContent = d.title || d.verse || "聖書箇所";
       const verse = document.createElement("div");
       verse.className = "meta";
       verse.textContent = d.verse;
