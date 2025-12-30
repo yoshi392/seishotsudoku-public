@@ -150,29 +150,35 @@
     }));
   }
 
-  function renderToday(t) {
-    if (!t) return;
-    const ymd = normalizeDate(t.date) || todayYmdLocal();
-    todayYmd = ymd;
+function renderToday(t) {
+  if (!t) return;
+  const ymd = normalizeDate(t.date) || todayYmdLocal();
+  todayYmd = ymd;
 
-    const titleText = t.title || t.verse || "今日の聖句";
-    const verseText = t.verse && t.verse !== titleText ? t.verse : "";
+  const titleText = t.title || t.verse || "今日の聖句";
+  const verseText = t.verse && t.verse !== titleText ? t.verse : "";
 
-    setText(els.todayDate, `${t.date || ymd} ${t.weekday || ""}`.trim());
-    setText(els.todayTitle, titleText);
-    setText(els.todayVerse, verseText);
-    if (els.todayVerse) els.todayVerse.style.display = verseText ? "block" : "none";
+  setText(els.todayDate, `${t.date || ymd} ${t.weekday || ""}`.trim());
+  setText(els.todayTitle, titleText);
+  setText(els.todayVerse, verseText);
+  if (els.todayVerse) els.todayVerse.style.display = verseText ? "block" : "none";
 
-    setText(els.todayComment, t.comment || "");
-    if (els.todayEventLabel) {
-      els.todayEventLabel.textContent = t.comment ? "本日のイベント／スケジュール" : "";
-      els.todayEventLabel.style.display = t.comment ? "block" : "none";
-    }
-
-    renderButtons(els.todayButtons, t.buttons || []);
-    if (els.todayLikeCount) els.todayLikeCount.textContent = `♡ ${t.likeCount ?? 0}`;
-    updateTodayButtons(ymd);
+  // ここを差し替え
+  const commentText = t.comment || "";
+  if (els.todayComment) {
+    els.todayComment.innerHTML = commentText.replace(/\n/g, "<br>");
   }
+
+  if (els.todayEventLabel) {
+    els.todayEventLabel.textContent = commentText ? "本日のイベント／スケジュール" : "";
+    els.todayEventLabel.style.display = commentText ? "block" : "none";
+  }
+
+  renderButtons(els.todayButtons, t.buttons || []);
+  if (els.todayLikeCount) els.todayLikeCount.textContent = `♡ ${t.likeCount ?? 0}`;
+  updateTodayButtons(ymd);
+}
+
 
   function renderButtons(container, buttons) {
     if (!container) return;
