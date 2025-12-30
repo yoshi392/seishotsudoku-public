@@ -476,6 +476,11 @@
     setInstallHint();
     setGreeting();
     updateInstallUi();
+
+    // ←ここでコメント要素に改行表示を指定
+  if (els.todayComment) els.todayComment.style.whiteSpace = "pre-line";
+
+    
     loadData();
     if (Notification?.permission === "granted") hidePushButton();
     registerServiceWorker().catch(() => {});
