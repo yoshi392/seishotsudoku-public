@@ -263,13 +263,13 @@
       const btnLike = document.createElement("button");
       btnLike.textContent = isLiked(d.ymd) ? "♥ いいね済" : "♡ いいね";
       btnLike.className = "pill secondary";
-      btnLike.addEventListener("click", (ev) => {
+      btnLike.addEventListener("click", async (ev) => {
         ev.stopPropagation();
         const now = !isLiked(d.ymd);
         setLike(d.ymd, now);
-        toggleLike(d.ymd, now);
-        renderList();
+        await toggleLike(d.ymd, now);
         if (d.ymd === todayYmd) updateTodayButtons(todayYmd);
+        renderList();
       });
 
       const likeBadge = document.createElement("span");
@@ -295,7 +295,7 @@
   }
 
   async function toggleLike(date, nowOn) {
-    setLike(date, nowOn);
+    setLike(date, nowOn); // ローカル状態
     try {
       const delta = nowOn ? 1 : -1;
       const res = await fetch(`${API_BASE}/like`, {
@@ -304,7 +304,11 @@
         body: JSON.stringify({ date, delta }),
       });
       const json = await res.json();
-      if (json.likeCount !== undefined) updateLikeCount(date, json.likeCount);
+      if (json.likeCount !== undefined) {
+        // 該当日のみ likeCount を更新
+        days = days.map((d) => (d.ymd === date ? { ...d, likeCount: json.likeCount } : d));
+        updateLikeCount(date, json.likeCount);
+      }
     } catch (e) {
       // サーバ失敗時はローカルだけ保持
     }
@@ -330,11 +334,11 @@
       renderList();
     });
 
-    els.btnLike?.addEventListener("click", () => {
+    els.btnLike?.addEventListener("click", async () => {
       if (!todayYmd) return;
       const now = !isLiked(todayYmd);
       setLike(todayYmd, now);
-      toggleLike(todayYmd, now);
+      await toggleLike(todayYmd, now);
       updateTodayButtons(todayYmd);
       renderList();
     });
