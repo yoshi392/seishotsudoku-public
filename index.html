@@ -75,10 +75,11 @@
     .meta { color: var(--muted); font-size: 13px; }
   </style>
   <script>
-    window.__CONFIG__ = {
-      WORKER_ORIGIN: "https://seishotsudoku-push-public.teruntyo.workers.dev",
-      VAPID_PUBLIC_KEY: "BL7X2zxCQc6fvD6w5bTl_dDDm14aKdLdOFUdXLbgP_7l0yd0mLE3xst7BaLZj-SOVuHeoun3FPqDPTf_MhfkNGw"
-    };
+window.__CONFIG__ = {
+  WORKER_ORIGIN: "https://seishotsudoku-public-push.teruntyo.workers.dev",  // 公開版の Worker
+  VAPID_PUBLIC_KEY: "BL7X2zxCQc6fvD6w5bTl_dDDm14aKdLdOFUdXLbgP_7l0yd0mLE3xst7BaLZj-SOVuHeoun3FPqDPTf_MhfkNGw" // 公開版の VAPID 公開鍵
+};
+
   </script>
   <script defer src="./app.js"></script>
 </head>
