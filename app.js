@@ -3,7 +3,7 @@
   const API_BASE = (cfg.WORKER_ORIGIN || "").replace(/\/+$/, "") || location.origin;
   const VAPID_KEY = cfg.VAPID_PUBLIC_KEY || "";
   const qs = (id) => document.getElementById(id);
-  const isIOS = () => /iPhone|iPad|iPod/i.test(window.navigator.userAgent);
+  const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent);
   const INSTALLED_KEY = "pwa_installed";
 
   const els = {
@@ -35,17 +35,15 @@
 
   const isStandalone = () =>
     (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
-    window.navigator.standalone === true;
+    navigator.standalone === true;
 
-  function alreadyInstalled() {
-    return isStandalone() || localStorage.getItem(INSTALLED_KEY) === "1";
-  }
-  function markInstalled() {
-    localStorage.setItem(INSTALLED_KEY, "1");
-    updateInstallUi();
-  }
-
-  window.addEventListener("appinstalled", () => { markInstalled(); });
+  const setText = (el, v) => { if (el) el.textContent = v ?? ""; };
+  const storageKeyRead = (d) => `read:${d}`;
+  const storageKeyLike = (d) => `like:${d}`;
+  const isRead = (d) => localStorage.getItem(storageKeyRead(d)) === "1";
+  const isLiked = (d) => localStorage.getItem(storageKeyLike(d)) === "1";
+  const setRead = (d, on) => localStorage.setItem(storageKeyRead(d), on ? "1" : "0");
+  const setLike = (d, on) => localStorage.setItem(storageKeyLike(d), on ? "1" : "0");
 
   function greetingByTime() {
     const h = new Date().getHours();
@@ -53,41 +51,18 @@
     if (h < 17) return "こんにちは。";
     return "こんばんは。";
   }
-  function setGreeting() {
-    if (els.greeting) els.greeting.textContent = greetingByTime();
-  }
+  function setGreeting() { if (els.greeting) els.greeting.textContent = greetingByTime(); }
 
-  function resetIfNewYear() {
-    const nowYear = String(new Date().getFullYear());
-    const key = "lastYear";
-    const saved = localStorage.getItem(key);
-    if (saved === nowYear) return;
-    const toDelete = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && (k.startsWith("read:") || k.startsWith("like:"))) toDelete.push(k);
-    }
-    toDelete.forEach((k) => localStorage.removeItem(k));
-    localStorage.setItem(key, nowYear);
-  }
-
-  function storageKeyRead(ymd) { return `read:${ymd}`; }
-  function storageKeyLike(ymd) { return `like:${ymd}`; }
-  function isRead(ymd) { return localStorage.getItem(storageKeyRead(ymd)) === "1"; }
-  function isLiked(ymd) { return localStorage.getItem(storageKeyLike(ymd)) === "1"; }
-  function setRead(ymd, on) { localStorage.setItem(storageKeyRead(ymd), on ? "1" : "0"); }
-  function setLike(ymd, on) { localStorage.setItem(storageKeyLike(ymd), on ? "1" : "0"); }
-  function setText(el, value) { if (el) el.textContent = value ?? ""; }
-
-  async function fetchJson(path) {
-    const url = `${API_BASE}${path}`;
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!res.ok) {
-      const msg = `${res.status} ${res.statusText}`;
-      setText(els.pushStatus, `データ取得に失敗しました: ${msg}`);
-      throw new Error(msg);
-    }
-    return res.json();
+  function setMultiline(el, text) {
+    if (!el) return;
+    const lines = String(text || "").split(/\r?\n/);
+    while (lines.length && lines[0].trim() === "") lines.shift();
+    while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+    el.textContent = "";
+    lines.forEach((line, idx) => {
+      el.append(document.createTextNode(line));
+      if (idx < lines.length - 1) el.append(document.createElement("br"));
+    });
   }
 
   function normalizeDate(v) {
@@ -95,9 +70,15 @@
     if (!m) return "";
     return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
   }
-  function todayYmdLocal() {
+  const todayYmdLocal = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  async function fetchJson(path) {
+    const res = await fetch(`${API_BASE}${path}`, { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return res.json();
   }
 
   async function loadData() {
@@ -109,9 +90,9 @@
       const daysArr = Array.isArray(daysRes) ? daysRes : daysRes.days || [];
       days = sanitizeDays(daysArr);
       if (todayRes?.date) todayYmd = normalizeDate(todayRes.date) || todayYmdLocal();
-
       renderToday(todayRes);
       renderList();
+      setText(els.pushStatus, "");
     } catch (e) {
       setText(els.pushStatus, `データ取得に失敗しました: ${e.message}`);
     }
@@ -127,7 +108,7 @@
           ymd,
           date: d.date || ymd.replaceAll("-", "/"),
           weekday: d.weekday || "",
-          title: d.title || d.verse || "今日の聖句",
+          title: d.title || d.verse || "今日の聖書箇所",
           verse: d.verse || "",
           comment: d.comment || "",
           buttons: normalizeButtons(d.buttons, d.urls, d.title || d.verse),
@@ -135,7 +116,7 @@
         };
       })
       .filter(Boolean)
-      .filter((d) => d.ymd < today) // 今日を除外し過去のみ
+      .filter((d) => d.ymd <= today)
       .sort((a, b) => (a.ymd < b.ymd ? 1 : -1));
   }
 
@@ -150,35 +131,37 @@
     }));
   }
 
-function renderToday(t) {
-  if (!t) return;
-  const ymd = normalizeDate(t.date) || todayYmdLocal();
-  todayYmd = ymd;
+  function renderToday(t) {
+    if (!t) return;
+    const ymd = normalizeDate(t.date) || todayYmdLocal();
+    todayYmd = ymd;
 
-  const titleText = t.title || t.verse || "今日の聖句";
-  const verseText = t.verse && t.verse !== titleText ? t.verse : "";
+    const titleText = t.title || t.verse || "本日の聖書箇所";
+    const verseText = t.verse && t.verse !== titleText ? t.verse : "";
 
-  setText(els.todayDate, `${t.date || ymd} ${t.weekday || ""}`.trim());
-  setText(els.todayTitle, titleText);
-  setText(els.todayVerse, verseText);
-  if (els.todayVerse) els.todayVerse.style.display = verseText ? "block" : "none";
+    setText(els.todayDate, `${t.date || ymd} ${t.weekday || ""}`.trim());
 
-  // ここを差し替え
-  const commentText = t.comment || "";
-  if (els.todayComment) {
-    els.todayComment.innerHTML = commentText.replace(/\n/g, "<br>");
+    // イベント見出し＋コメント
+    const commentText = (t.comment || "").trim();
+    if (els.todayEventLabel) {
+      const base = getComputedStyle(els.todayVerse || document.body);
+      els.todayEventLabel.textContent = commentText ? "本日のイベント／スケジュール" : "";
+      els.todayEventLabel.style.display = commentText ? "block" : "none";
+      els.todayEventLabel.style.fontSize = base.fontSize;
+      els.todayEventLabel.style.fontWeight = base.fontWeight;
+      els.todayEventLabel.style.color = base.color;
+    }
+    setMultiline(els.todayComment, commentText);
+
+    // 本日の聖書箇所 見出し＋本文
+    setText(els.todayTitle, "本日の聖書箇所");
+    setText(els.todayVerse, verseText || titleText);
+    if (els.todayVerse) els.todayVerse.style.display = "block";
+
+    renderButtons(els.todayButtons, t.buttons || []);
+    if (els.todayLikeCount) els.todayLikeCount.textContent = `♡ ${t.likeCount ?? 0}`;
+    updateTodayButtons(ymd);
   }
-
-  if (els.todayEventLabel) {
-    els.todayEventLabel.textContent = commentText ? "本日のイベント／スケジュール" : "";
-    els.todayEventLabel.style.display = commentText ? "block" : "none";
-  }
-
-  renderButtons(els.todayButtons, t.buttons || []);
-  if (els.todayLikeCount) els.todayLikeCount.textContent = `♡ ${t.likeCount ?? 0}`;
-  updateTodayButtons(ymd);
-}
-
 
   function renderButtons(container, buttons) {
     if (!container) return;
@@ -220,6 +203,13 @@ function renderToday(t) {
         verse.className = "meta";
         verse.textContent = verseText;
         li.append(verse);
+      }
+
+      if (d.comment) {
+        const c = document.createElement("div");
+        c.className = "meta";
+        setMultiline(c, d.comment);
+        li.append(c);
       }
 
       if (d.buttons && d.buttons.length) {
@@ -301,7 +291,7 @@ function renderToday(t) {
   }
 
   async function toggleLike(date, nowOn) {
-    setLike(date, nowOn); // ローカル状態
+    setLike(date, nowOn);
     try {
       const delta = nowOn ? 1 : -1;
       const res = await fetch(`${API_BASE}/like`, {
@@ -311,13 +301,10 @@ function renderToday(t) {
       });
       const json = await res.json();
       if (json.likeCount !== undefined) {
-        // 該当日のみ likeCount を更新
         days = days.map((d) => (d.ymd === date ? { ...d, likeCount: json.likeCount } : d));
         updateLikeCount(date, json.likeCount);
       }
-    } catch (e) {
-      // サーバ失敗時はローカルだけ保持
-    }
+    } catch (e) {}
   }
 
   function updateLikeCount(date, cnt) {
@@ -376,6 +363,12 @@ function renderToday(t) {
 
     els.btnPush?.addEventListener("click", enablePush);
   }
+
+  function alreadyInstalled() {
+    return isStandalone() || localStorage.getItem(INSTALLED_KEY) === "1";
+  }
+  function markInstalled() { localStorage.setItem(INSTALLED_KEY, "1"); updateInstallUi(); }
+  window.addEventListener("appinstalled", () => { markInstalled(); });
 
   function updateInstallUi() {
     if (!els.btnInstall) return;
@@ -442,9 +435,7 @@ function renderToday(t) {
     });
   }
 
-  function hidePushButton() {
-    if (els.btnPush) els.btnPush.style.display = "none";
-  }
+  function hidePushButton() { if (els.btnPush) els.btnPush.style.display = "none"; }
 
   function registerServiceWorker() {
     return Promise.race([
@@ -476,20 +467,37 @@ function renderToday(t) {
     }
   }
 
+  function clearTodayUI() {
+    setText(els.todayTitle, "");
+    setText(els.todayVerse, "");
+    setText(els.todayEventLabel, "");
+    setText(els.todayComment, "");
+  }
+
   function init() {
+    clearTodayUI();
     resetIfNewYear();
     bindEvents();
     setInstallHint();
     setGreeting();
     updateInstallUi();
-
-    // ←ここでコメント要素に改行表示を指定
-  if (els.todayComment) els.todayComment.style.whiteSpace = "pre-line";
-
-    
     loadData();
     if (Notification?.permission === "granted") hidePushButton();
     registerServiceWorker().catch(() => {});
+  }
+
+  function resetIfNewYear() {
+    const nowYear = String(new Date().getFullYear());
+    const key = "lastYear";
+    const saved = localStorage.getItem(key);
+    if (saved === nowYear) return;
+    const toDelete = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith("read:") || k.startsWith("like:"))) toDelete.push(k);
+    }
+    toDelete.forEach((k) => localStorage.removeItem(k));
+    localStorage.setItem(key, nowYear);
   }
 
   document.addEventListener("DOMContentLoaded", init);
