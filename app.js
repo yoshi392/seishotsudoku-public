@@ -17,6 +17,7 @@
     todayVerse: qs("todayVerse"),
     todayButtons: qs("todayButtons"),
     todayComment: qs("todayComment"),
+    todayEventLabel: qs("todayEventLabel"),
     btnFilterUnread: qs("btnFilterUnread"),
     btnFilterAll: qs("btnFilterAll"),
     countRead: qs("countRead"),
@@ -24,6 +25,7 @@
     list: qs("list"),
     installHint: qs("installHint"),
     todayLikeCount: qs("todayLikeCount"),
+    greeting: qs("greeting"),
   };
 
   let installPrompt = null;
@@ -43,9 +45,17 @@
     updateInstallUi();
   }
 
-  window.addEventListener("appinstalled", () => {
-    markInstalled();
-  });
+  window.addEventListener("appinstalled", () => { markInstalled(); });
+
+  function greetingByTime() {
+    const h = new Date().getHours();
+    if (h < 11) return "おはようございます。";
+    if (h < 17) return "こんにちは。";
+    return "こんばんは。";
+  }
+  function setGreeting() {
+    if (els.greeting) els.greeting.textContent = greetingByTime();
+  }
 
   function resetIfNewYear() {
     const nowYear = String(new Date().getFullYear());
@@ -125,7 +135,7 @@
         };
       })
       .filter(Boolean)
-      .filter((d) => d.ymd <= today)
+      .filter((d) => d.ymd < today) // 今日を除外し過去のみ
       .sort((a, b) => (a.ymd < b.ymd ? 1 : -1));
   }
 
@@ -152,7 +162,13 @@
     setText(els.todayTitle, titleText);
     setText(els.todayVerse, verseText);
     if (els.todayVerse) els.todayVerse.style.display = verseText ? "block" : "none";
+
     setText(els.todayComment, t.comment || "");
+    if (els.todayEventLabel) {
+      els.todayEventLabel.textContent = t.comment ? "本日のイベント／スケジュール" : "";
+      els.todayEventLabel.style.display = t.comment ? "block" : "none";
+    }
+
     renderButtons(els.todayButtons, t.buttons || []);
     if (els.todayLikeCount) els.todayLikeCount.textContent = `♡ ${t.likeCount ?? 0}`;
     updateTodayButtons(ymd);
@@ -181,7 +197,6 @@
       const li = document.createElement("li");
       li.className = "item";
 
-      const left = document.createElement("div");
       const meta = document.createElement("div");
       meta.className = "meta";
       meta.textContent = `${d.date} ${d.weekday}`.trim();
@@ -193,12 +208,12 @@
       title.className = "title";
       title.textContent = titleText;
 
-      left.append(meta, title);
+      li.append(meta, title);
       if (verseText) {
         const verse = document.createElement("div");
         verse.className = "meta";
         verse.textContent = verseText;
-        left.append(verse);
+        li.append(verse);
       }
 
       if (d.buttons && d.buttons.length) {
@@ -213,7 +228,7 @@
           if (/LB/i.test(b.label || "")) a.classList.add("lb");
           links.appendChild(a);
         });
-        left.append(links);
+        li.append(links);
       }
 
       const primaryLink =
@@ -264,7 +279,7 @@
 
       likeWrap.append(btnLike, likeBadge);
       controls.append(btnRead, likeWrap);
-      li.append(left, controls);
+      li.append(controls);
       els.list.appendChild(li);
     });
 
@@ -343,7 +358,7 @@
         installPrompt.prompt();
         await installPrompt.userChoice;
         installPrompt = null;
-        markInstalled(); // 成功/失敗どちらでも一旦隠す
+        markInstalled();
       } else {
         setText(els.pushStatus, "Chromeメニューの「ホーム画面に追加」からもインストールできます");
       }
@@ -455,6 +470,7 @@
     resetIfNewYear();
     bindEvents();
     setInstallHint();
+    setGreeting();
     updateInstallUi();
     loadData();
     if (Notification?.permission === "granted") hidePushButton();
