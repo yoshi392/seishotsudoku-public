@@ -116,7 +116,7 @@
         };
       })
       .filter(Boolean)
-      .filter((d) => d.ymd <= today)
+      .filter((d) => d.ymd < today)
       .sort((a, b) => (a.ymd < b.ymd ? 1 : -1));
   }
 
